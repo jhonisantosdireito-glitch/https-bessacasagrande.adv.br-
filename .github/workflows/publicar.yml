@@ -1,0 +1,35 @@
+name: Publicar site
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Montar pasta do site
+        run: |
+          mkdir -p _site/img
+          cp -r index.html css js cartao contatos CNAME robots.txt sitemap.xml _site/
+          for f in _imagens/*.b64; do base64 -d "$f" > "_site/img/$(basename "$f" .b64)"; done
+          touch _site/.nojekyll
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-liberation python3-pil >/dev/null
+          python3 _imagens/gerar_og.py _site
+          ls -la _site _site/img
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
